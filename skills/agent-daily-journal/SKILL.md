@@ -1,7 +1,7 @@
 ---
 name: agent-daily-journal
 description: Write a daily journal from the agent's own activity.
-version: 0.1.0
+version: 0.1.1
 author: alexhuiyi
 license: MIT
 platforms: [linux, macos, windows]

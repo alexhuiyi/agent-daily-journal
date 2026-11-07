@@ -3,6 +3,19 @@
 All notable changes to this skill. Semver: the skill contract (SKILL.md) and the scripts move
 together.
 
+## [0.1.1] — 2026-11-07
+
+Packaging only — the skill contract and the scripts are unchanged from 0.1.0.
+
+### Changed
+
+- Repo restructured to the Hermes **tap layout**: the skill now lives at
+  `skills/agent-daily-journal/`, so both `hermes skills tap add alexhuiyi/agent-daily-journal` and
+  `hermes skills install github:alexhuiyi/agent-daily-journal/skills/agent-daily-journal` resolve.
+  A `SKILL.md` at the repo root is indexed by neither Hermes nor skills.sh.
+- README: added a **Data flow** section (what is read locally, what never leaves the machine),
+  a one-line install, and the skills.sh badge.
+
 ## [0.1.0] — 2026-10-26
 
 First packaged release, extracted from a working personal setup and generalised.

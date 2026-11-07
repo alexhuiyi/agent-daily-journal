@@ -1,7 +1,16 @@
 # agent-daily-journal
 
+[![skills.sh](https://skills.sh/b/alexhuiyi/agent-daily-journal)](https://skills.sh/alexhuiyi/agent-daily-journal)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 A Hermes skill that writes a personal daily journal from what the agent actually did — and proves
 it covered the day before the entry lands.
+
+Install it straight from this repo:
+
+```bash
+hermes skills install github:alexhuiyi/agent-daily-journal/skills/agent-daily-journal
+```
 
 Three parts, one idea: **the digest is material, the writer owns the voice, coverage is checked
 rather than trusted.**
@@ -34,6 +43,26 @@ same model:
 
 The second entry was 207 characters — well under both ceilings. Length was never the constraint;
 structure was.
+
+## Data flow
+
+This skill reads local stores, so here is the whole picture before you install it:
+
+| What | Where | Leaves the machine? |
+|---|---|---|
+| Session + message rows | `<HERMES_HOME>/state.db`, opened `mode=ro` — never written | No |
+| File mtimes | under `workspace`, filtered by `skip_dirs` | No |
+| The digest | generated locally, printed to stdout | No |
+| The journal + coverage ledger | your `journal.md`, appended in place | No |
+| Prompt text (only if Ollama is on) | `POST 127.0.0.1:11434` for embedding + compression | **Never** — loopback only |
+| The finished entry | written by your agent, on your model, on your bill | That's your existing agent call |
+
+With `local_mode: "off"` (or no Ollama running) the collector makes **zero network calls**. It does
+not fetch anything, does not phone home, and has no telemetry. The only tokens spent anywhere in
+this pipeline are the ones your agent already spends writing the entry.
+
+`state.db` is handled read-only by design: `sqlite3.connect("file:...?mode=ro", uri=True)`. If the
+path is wrong or locked, the collector fails loudly instead of falling back to a writable handle.
 
 ## Sample output
 
@@ -77,18 +106,37 @@ distinguishes them.
 
 ## Install
 
-1. Copy this directory into `<HERMES_HOME>/skills/productivity/agent-daily-journal/`.
-2. `cp config/journal.example.json config/journal.json`, set `workspace` (absolute path).
+**From GitHub (one line):**
+
+```bash
+hermes skills install github:alexhuiyi/agent-daily-journal/skills/agent-daily-journal
+```
+
+**Or add the repo as a tap** — this repo follows the tap layout (`skills/<name>/SKILL.md`), so every
+skill inside it becomes discoverable, and future skills added here show up automatically:
+
+```bash
+hermes skills tap add alexhuiyi/agent-daily-journal
+```
+
+**Or manually:** copy `skills/agent-daily-journal/` into
+`<HERMES_HOME>/skills/productivity/agent-daily-journal/`.
+
+Then, whichever route you took:
+
+1. `cp config/journal.example.json config/journal.json`, set `workspace` (absolute path).
    For Chinese labels use `config/journal.zh.example.json`.
-3. Create the journal file (`<workspace>/memory/journal/journal.md`) with a short header, and copy
+2. Create the journal file (`<workspace>/memory/journal/journal.md`) with a short header, and copy
    `assets/style.example.md` (or `assets/style.zh.example.md`) next to it as `style.md`. Replace the
    placeholders — the style file is the single authority on voice.
-4. Create the cron job per `references/deployment.md` (schedule `0 4 * * *`, collector as `script`,
+3. Create the cron job per `references/deployment.md` (schedule `0 4 * * *`, collector as `script`,
    `file` toolset only, prompt from `examples/cron-prompt.md`).
 
 ## Usage
 
 ```bash
+cd skills/agent-daily-journal   # all paths below are relative to the skill root
+
 # what is owed (human-readable digest)
 python scripts/journal_collect.py --config config/journal.json
 
@@ -133,8 +181,8 @@ Environment overrides: `HERMES_HOME`, `JOURNAL_CONFIG`, `JOURNAL_FILE`, `JOURNAL
 ## Tests
 
 ```bash
-python -m unittest discover -s tests      # 28 tests, stdlib only, no network, no real state.db
-python scripts/check_package.py           # pre-publish rules: frontmatter, dead links, local paths
+python -m unittest discover -s skills/agent-daily-journal/tests   # 28 tests, stdlib only, no network
+python skills/agent-daily-journal/scripts/check_package.py        # frontmatter, dead links, local paths
 ```
 
 `tests/fixtures/` holds a synthetic four-session digest (`digest_2026-03-14`), the entry that names
@@ -144,16 +192,27 @@ The fixtures use invented tasks only — **no real journal or user data ships wi
 ## Layout
 
 ```
-SKILL.md                     skill contract (procedure, pitfalls, verification)
-scripts/journal_collect.py   digest collector
-scripts/journal_lint.py      coverage / voice / length linter
-scripts/check_package.py     pre-publish checks (frontmatter, dead links, local paths, no samples)
-config/                      example configs (en, zh)
-assets/                      example style files (en, zh)
-examples/cron-prompt.md      the writer contract, ready to paste into cronjob_manage
-references/                  collector design, writer side, deployment
-tests/                       unit tests + synthetic fixtures
+agent-daily-journal/                  this repo — laid out as a Hermes skill tap
+├── skills/
+│   └── agent-daily-journal/          ← the installable skill (copy this one)
+│       ├── SKILL.md                  skill contract (procedure, pitfalls, verification)
+│       ├── scripts/
+│       │   ├── journal_collect.py    digest collector
+│       │   ├── journal_lint.py       coverage / voice / length linter
+│       │   └── check_package.py      frontmatter, dead links, local paths, no samples
+│       ├── config/                   example configs (en, zh)
+│       ├── assets/                   example style files (en, zh)
+│       ├── examples/cron-prompt.md   the writer contract, ready to paste into cronjob_manage
+│       ├── references/               collector design, writer side, deployment
+│       └── tests/                    unit tests + synthetic fixtures
+├── README.md
+├── CHANGELOG.md
+└── LICENSE
 ```
+
+The `skills/<name>/SKILL.md` nesting is not decoration: it is the [tap layout](https://hermes-agent.nousresearch.com/docs/user-guide/features/skills)
+Hermes and skills.sh index. A `SKILL.md` sitting at the repo root is invisible to both — it has to be
+one level down, under `skills/`.
 
 ## License
 
